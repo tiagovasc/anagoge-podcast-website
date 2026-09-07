@@ -28,3 +28,6 @@ next-env.d.ts
 
 # deploy script log
 deploy-log.txt
+
+# source archives (the original v0 export). Never needs to ship to Railway.
+*.zip
