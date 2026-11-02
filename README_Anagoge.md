@@ -127,6 +127,8 @@ Edit, run `npm test`, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at t
 
 # Changelog
 
+- **2026-11-02, transfer archive cleanup** - After verifying the successful latest-episode deployment, removed only the two user-named transfer archives `Projects/anagoge_src_snapshot.tgz` and `Projects/anagoge_mvp_changes_20261102.tgz`. Historical snapshot references below describe the staging state; use the preserved Git commits for source rollback now. Unused scaffold/dependency removal is pending exact approval.
+
 - **2026-11-02, verified episode corrections** - Corrected ep8's copied Michael Strevens description to Juensung Kim's published description; restored ep5's complete Azim Shariff description; corrected ep6's guest to Jonathan Pageau. Verified all three against each video's published `attributedDescription` in YouTube page metadata. Only the affected description/name fields changed. The older defect list below records the pre-fix state. Scaffold/package cleanup remains pending an exact deletion approval after automatic review rejected broad inferred cleanup.
 
 - **2026-11-02, player alignment** - All episode headings share a CSS grid sizing region calculated from every title/guest at the current viewport width. This keeps the player at the same document position across short/long titles without truncation or fixed-height assumptions. Invisible sizing copies are hidden from accessibility tools; the visible heading remains the only H1. Reserved scrollbar space prevents sideways movement, scroll anchoring is disabled for the episode content, and episode navigation returns to the top immediately rather than animating through a changing layout.
