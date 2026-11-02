@@ -127,6 +127,8 @@ Edit, run `npm test`, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at t
 
 # Changelog
 
+- **2026-11-02, latest episode** - Added `public/episodes/ep31.json`: Selfhood and Psychedelic Phenomenology with Jason K. Day. Description and 15 chapters copied from the published YouTube feed (`sdZjDP7D5hI`); Apple episode `1000793841894` verified via iTunes lookup, Spotify episode `0BriXcdN2FwlVrqKzyHwjf` verified on the official show page. YouTube chapters are 73 seconds later than audio chapters after the opening and are used because the website embeds YouTube. Blog link comes from the published YouTube description. Existing episode files preserved.
+
 - **2026-11-02, repository visibility** - At the user's request, changed this repository from private to public after reviewing tracked files and history and scanning 141 historical blobs, 148 current files and text files inside the original export ZIP for credentials; no findings. Only the standalone website repository was exposed. GitHub confirmed `visibility: public`.
 
 - **2026-11-02, production publication** - User authorized committing and deploying the staged MVP-to-production pass described below. Fresh `npm test`: 5/5 passed; fresh production build: all 34 static pages generated, including 30 episode pages. Deployment proceeds through the existing GitHub-to-Railway chain. The earlier "not yet deployed" entry records the staging state.
