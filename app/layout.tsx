@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.ico?v=20261102" sizes="any" />
         <meta name="twitter:title" content="Anagoge Podcast" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="Anagoge Podcast" />
