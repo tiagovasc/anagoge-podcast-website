@@ -123,6 +123,8 @@ Edit, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the ba
 
 # Changelog
 
+- **2026-11-02, approved revision** - Replaced the first favicon with the user-approved dark rounded logo tile, using the high-resolution intro logo source and a warm-white cave opening. Master PNG and matching ICO are preserved in `Anagoge Podcast/28 VISUALS logo intro/assets/logo/`. Layout cache version is `20261102-approved`; revert this revision's Git commit to restore the previous favicon.
+
 - **2026-11-02** - Added `public/favicon.ico`, derived from the existing podcast logo badge, with 16–256 px sizes. The layout uses a dated favicon URL to refresh browser caches. This resolves the missing favicon noted below; the separate `/card.png` preview issue remains.
 
 - **2026-09-07** - Added episode 30 for Jussi Jylkkä and documented the repository's operating, deployment, and maintenance procedures in this README.
