@@ -5,71 +5,19 @@
 html {
   height: 100%;
   --tw-bg-opacity: 1;
-  scroll-behavior: smooth;
   text-underline-offset: 4px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 200;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-UltraLight.ttf") format("truetype");
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 300;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Light.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 500;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Medium.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Medium.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Bold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 800;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Heavy.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 900;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-Black.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Neue Haas Unica";
-  font-weight: 1000;
-  font-display: swap;
-  src: url("/fonts/NeueHaasUnicaPro-XBlack.ttf") format("truetype");
+/* Stop the page from scrolling behind the open episode list. */
+body.modal-open {
+  overflow: hidden;
 }
 
 @layer base {

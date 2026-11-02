@@ -2,126 +2,93 @@
 
 import { ChevronLeft, ChevronRight, List } from "lucide-react"
 import { useState } from "react"
-import Image from "next/image"
 import EpisodeCard from "@/components/episode-card"
 import EpisodeListModal from "@/components/episode-list-modal"
+import type { Episode } from "@/lib/episodes"
 
 interface EpisodeCarouselProps {
-  episodes: any[]
-  currentIndex: number
-  setCurrentIndex: (index: number) => void
+  episodes: Episode[] // newest first
+  index: number
+  onSelect: (number: number) => void
 }
 
-export default function EpisodeCarousel({
-  episodes,
-  currentIndex,
-  setCurrentIndex,
-}: EpisodeCarouselProps) {
-  const [isListOpen, setIsListOpen] = useState(false)
-  const prevIndex = currentIndex === 0 ? episodes.length - 1 : currentIndex - 1
-  const nextIndex = currentIndex === episodes.length - 1 ? 0 : currentIndex + 1
+const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b810]"
 
-  const handlePrev = () => setCurrentIndex(prevIndex)
-  const handleNext = () => setCurrentIndex(nextIndex)
+function SideNav({ episode, direction, onClick }: { episode: Episode; direction: "newer" | "older"; onClick: () => void }) {
+  const Icon = direction === "newer" ? ChevronLeft : ChevronRight
+  return (
+    <button
+      onClick={onClick}
+      className={`group absolute top-[180px] w-48 flex flex-col items-center gap-3 text-center rounded-xl p-2 ${direction === "newer" ? "right-full mr-4" : "left-full ml-4"} ${focusRing}`}
+      aria-label={`${direction === "newer" ? "Newer" : "Older"} episode: ${episode.title} with ${episode.side_title}`}
+    >
+      <span className="p-3 rounded-full bg-[#f5b810] group-hover:bg-[#ffc933] group-active:scale-95 transition">
+        <Icon className="w-7 h-7 text-black" aria-hidden />
+      </span>
+      <span className="space-y-1 opacity-60 group-hover:opacity-100 transition-opacity">
+        <span className="block text-xs uppercase tracking-wide text-white/60">{direction === "newer" ? "Newer" : "Older"}</span>
+        <span className="block text-sm font-semibold leading-tight">{episode.title}</span>
+        <span className="block text-xs text-white/60">{episode.side_title}</span>
+      </span>
+    </button>
+  )
+}
+
+export default function EpisodeCarousel({ episodes, index, onSelect }: EpisodeCarouselProps) {
+  const [isListOpen, setIsListOpen] = useState(false)
+  const [tab, setTab] = useState<"description" | "timestamps">("description")
+  const episode = episodes[index]
+  const newer = index > 0 ? episodes[index - 1] : undefined
+  const older = index < episodes.length - 1 ? episodes[index + 1] : undefined
 
   return (
     <div className="min-h-screen flex flex-col w-full">
-      {/* Header with Logo and Episode List Button */}
-      <div className="w-full py-6 md:py-12">
+      <header className="w-full py-6 md:py-12">
         <div className="flex justify-center items-center gap-6 md:gap-12">
-          <Image
-            src="/images/design-mode/anagogepodcastlogo.png"
-            alt="Anagoge Logo"
-            width={120}
-            height={120}
-            className="w-20 md:w-32"
-          />
+          <a href="/" onClick={(e) => { if (e.button === 0 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); onSelect(episodes[0].number) } }} className={`rounded ${focusRing}`} aria-label="Anagoge Podcast, latest episode">
+            <img
+              src="/images/logo-256.webp"
+              alt="Anagoge Podcast"
+              width={256}
+              height={249}
+              fetchPriority="high"
+              className="w-20 md:w-32 h-auto"
+            />
+          </a>
           <button
             onClick={() => setIsListOpen(true)}
-            className="p-2 md:p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title="View all episodes"
-            aria-label="Open episode list"
+            className={`flex items-center gap-2 p-2 md:px-4 md:py-3 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/15 transition-colors text-sm font-medium ${focusRing}`}
+            aria-haspopup="dialog"
+            aria-expanded={isListOpen}
           >
-            <List className="w-5 h-5 md:w-6 md:h-6" />
+            <List className="w-5 h-5 md:w-6 md:h-6" aria-hidden />
+            <span className="sr-only md:not-sr-only">All episodes</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content Area */}
       <div className="flex-1 w-full pb-12 px-4">
-
-        {/* MOBILE: just the center card */}
-        <div className="lg:hidden w-full max-w-3xl mx-auto">
-          <EpisodeCard
-            episode={episodes[currentIndex]}
-            number={episodes.length - currentIndex}
-            isPreview={false}
-            isSelected={true}
-            onNavigate={{ prev: handlePrev, next: handleNext }}
-            previousEpisode={episodes[prevIndex]}
-            nextEpisode={episodes[nextIndex]}
-            currentIndex={currentIndex}
-          />
-        </div>
-
-        {/* DESKTOP: center card with nav overlaid beside the YouTube widget */}
-        <div className="hidden lg:block relative w-full max-w-3xl mx-auto">
-
-          {/* Left nav — positioned to align with YouTube widget center */}
-          {currentIndex !== 0 && (
-            <div className="absolute right-full top-[180px] pr-6 flex flex-col items-center gap-3 w-48">
-              <button
-                onClick={handlePrev}
-                className="p-3 rounded-full bg-[#f5b810] hover:bg-yellow-600 transition-colors flex-shrink-0"
-                aria-label="Previous episode"
-              >
-                <ChevronLeft className="w-7 h-7 text-black" />
-              </button>
-              <div className="text-center opacity-60 space-y-1">
-                <p className="text-xs uppercase tracking-wide text-white/50">Previous</p>
-                <p className="text-sm font-semibold leading-tight">{episodes[prevIndex].title}</p>
-                <p className="text-xs text-white/60">{episodes[prevIndex].side_title}</p>
-              </div>
+        <div className="relative w-full max-w-3xl mx-auto">
+          {newer && (
+            <div className="hidden lg:block">
+              <SideNav episode={newer} direction="newer" onClick={() => onSelect(newer.number)} />
             </div>
           )}
-
-          {/* Right nav — positioned to align with YouTube widget center */}
-          <div className="absolute left-full top-[180px] pl-6 flex flex-col items-center gap-3 w-48">
-            <button
-              onClick={handleNext}
-              className="p-3 rounded-full bg-[#f5b810] hover:bg-yellow-600 transition-colors flex-shrink-0"
-              aria-label="Next episode"
-            >
-              <ChevronRight className="w-7 h-7 text-black" />
-            </button>
-            <div className="text-center opacity-60 space-y-1">
-              <p className="text-xs uppercase tracking-wide text-white/50">Next</p>
-              <p className="text-sm font-semibold leading-tight">{episodes[nextIndex].title}</p>
-              <p className="text-xs text-white/60">{episodes[nextIndex].side_title}</p>
+          {older && (
+            <div className="hidden lg:block">
+              <SideNav episode={older} direction="older" onClick={() => onSelect(older.number)} />
             </div>
-          </div>
-
-          {/* Center card */}
-          <EpisodeCard
-            episode={episodes[currentIndex]}
-            number={episodes.length - currentIndex}
-            isPreview={false}
-            isSelected={true}
-            onNavigate={{ prev: handlePrev, next: handleNext }}
-            previousEpisode={episodes[prevIndex]}
-            nextEpisode={episodes[nextIndex]}
-            currentIndex={currentIndex}
-          />
+          )}
+          <EpisodeCard key={episode.number} episode={episode} newer={newer} older={older} onSelect={onSelect} tab={tab} onTabChange={setTab} />
         </div>
       </div>
 
-      {/* Episode List Modal */}
       <EpisodeListModal
         episodes={episodes}
         isOpen={isListOpen}
         onClose={() => setIsListOpen(false)}
-        onEpisodeSelect={setCurrentIndex}
-        currentIndex={currentIndex}
+        onEpisodeSelect={onSelect}
+        currentNumber={episode.number}
       />
     </div>
   )

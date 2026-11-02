@@ -49,7 +49,9 @@ Folder-specific rule: **this folder is a standalone git repo and is NOT part of 
 
 Next.js 14.2.35 (App Router) with React 19, TypeScript, Tailwind, and a large shadcn/ui component set in `components/ui/` (57 files, mostly unused, inherited from the v0 scaffold). 55 runtime dependencies.
 
-The whole site is client-rendered. There are no API routes, no server actions, no middleware, and no environment variables. `next.config.mjs` sets `images.unoptimized: true` and `typescript.ignoreBuildErrors: true`.
+Since 2026-11-02 the site is statically generated: every page, including one per episode at `/episode/N`, is prerendered at build time with the episode data baked into the HTML. Moving between episodes happens in the browser without a page load and updates the URL. There are no API routes, no server actions, no middleware, and no environment variables. `next.config.mjs` sets `images.unoptimized: true`, `typescript.ignoreBuildErrors: true`, cache headers for images and icons, and basic security headers.
+
+The video player is a lightweight thumbnail (`components/youtube-embed.tsx`); YouTube's own player (about 1 to 2 MB) loads only when a visitor presses play or picks a chapter. Embeds use `youtube-nocookie.com`.
 
 ## Where episode data lives
 
@@ -70,9 +72,11 @@ Each episode is a flat JSON file at `public/episodes/epN.json`, numbered chronol
 
 ## How episodes are loaded
 
-`components/home.tsx` fetches `/episodes/ep1.json`, `ep2.json`, and so on in sequence, and **stops after 3 consecutive 404s**. It then reverses the list so the newest episode shows first.
+`lib/episodes.ts` reads every `public/episodes/epN.json` file at build time, sorts them newest first, and passes them to the page. The browser makes no episode requests. The displayed episode number is the file number `N`.
 
-Two consequences worth knowing: episode numbers must stay contiguous (a gap of 3 or more silently truncates the site), and the page makes one request per episode on every load.
+Consequences: a new or edited episode appears only after a rebuild (Railway rebuilds on every push, so the normal deploy covers this), and a numbering gap no longer truncates the site but is still wrong, so `npm test` fails on it.
+
+Before 2026-11-02, `components/home.tsx` fetched `ep1.json`, `ep2.json` and so on one at a time in the browser and stopped after 3 consecutive 404s; that took about 8 seconds before anything showed.
 
 ## Hosting and deploy chain
 
@@ -112,16 +116,20 @@ The apex needs ALIAS rather than CNAME, because a raw CNAME is not valid at a zo
 3. Get `apple_link` from the iTunes lookup API: `https://itunes.apple.com/lookup?id=1512482918&entity=podcastEpisode&limit=60`, which returns every episode with its `trackViewUrl`.
 4. Get `spotify_link` from the show page, `open.spotify.com/show/4ifa95kknLrUQblYTUMQ7T`, using "Load more episodes".
 5. Get `medium_link` from the blog URL in the YouTube description.
-6. Validate before deploying: numbers contiguous, no duplicate `youtube_id`, no empty fields, `youtube_link` matching `youtube_id`.
+6. Validate before deploying: run `npm test`. It checks that numbers are contiguous, no `youtube_id` is duplicated, required fields are filled, `youtube_link` matches `youtube_id`, and every chapter list parses.
 7. Run `deploy-anagoge-site.bat`.
 
 Only full interview episodes belong on the site. Clips and Tiago's own lectures and conference talks are excluded.
 
 ## Changing the site itself
 
-Edit, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the bat to build locally before pushing, which is worth doing for any code change as opposed to a data-only change.
+Edit, run `npm test`, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the bat to build locally before pushing, which is worth doing for any code change as opposed to a data-only change.
 
 # Changelog
+
+- **2026-11-02, production publication** - User authorized committing and deploying the staged MVP-to-production pass described below. Fresh `npm test`: 5/5 passed; fresh production build: all 34 static pages generated, including 30 episode pages. Deployment proceeds through the existing GitHub-to-Railway chain. The earlier "not yet deployed" entry records the staging state.
+
+- **2026-11-02, MVP-to-production pass (not yet deployed)** - Applied `Prompts/prompt_app_mvp_to_production.md` (all four sections, UI/UX at polish depth). Speed: episodes are baked into static HTML instead of 33 sequential fetches, YouTube player loads on demand, unused font declarations removed, logo served as a 14 KB WebP. On a throttled phone the first episode title appears in about 0.3 s instead of 7.7 s, and the page transfers about 270 KB instead of about 3 MB. Features: a shareable URL per episode (`/episode/N`) with its own link preview, back/forward support, arrow-key navigation, accent-insensitive search in the episode list, a share/copy-link button, chapters that jump the embedded player to that time. Fixes: the oldest episode's "Next" wrapped around to the newest; nine episodes showed a stray "- " before every chapter; the list could not be closed with Escape or by clicking outside; the missing `/card.png` link-preview image now exists; the web manifest had no name or icons. "Previous/Next" are relabelled "Newer/Older". Added `npm test`. Rollback: the pre-change Git commit is `8f3ed27`, and a source snapshot is at `Projects/anagoge_src_snapshot.tgz`.
 
 - **2026-11-02, approved revision** - Replaced the first favicon with the user-approved dark rounded logo tile, using the high-resolution intro logo source and a warm-white cave opening. Master PNG and matching ICO are preserved in `Anagoge Podcast/28 VISUALS logo intro/assets/logo/`. Layout cache version is `20261102-approved`; revert this revision's Git commit to restore the previous favicon.
 
@@ -139,11 +147,13 @@ Edit, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the ba
 - **`.npmrc` with `legacy-peer-deps=true` is load-bearing.** React 19 against Next 14.2.35 is a hard peer conflict and a plain `npm install` fails outright. Deleting that file breaks the Railway build.
 - **Do not delete `.git` from this folder.** It is the standalone repo, not a stray.
 - **Never add this folder back to the workspace repo.** It is deliberately listed under "Nested repos" in the workspace `.gitignore`.
-- **Episode numbering must stay contiguous.** Three consecutive missing numbers truncates the site silently.
+- **Episode numbering must stay contiguous.** A gap no longer truncates the site, but `npm test` fails on it and the displayed episode numbers would be wrong.
+- **Episode data is read at build time.** Editing a JSON file changes the live site only after a rebuild and deploy.
 - **A green Railway deploy does not mean the site works.** Verify a real asset URL, not just that the page loads.
 
 # Learnings
 
+- **2026-11-02 - Drive the real build with a keyboard, not only clicks.** Two modal bugs passed visual review and only showed in a scripted keyboard test: "Clear search" removed the focused button so typing went nowhere, and Enter in the search box reopened the list because focus returned to the opener mid-keypress. Fixed by refocusing the input and calling `preventDefault` on Enter.
 - **2026-08-11 - FIXED. Workspace-wide ignore rules silently stripped the site's images.** The workspace `.gitignore` ignores `*.png`, `*.jpg`, `*.svg` and `*.ico` as "workspace media". Under the old `git subtree` deploy, the site's 19 `public/` images were never tracked and the live site rendered with every image broken while every other check passed. Fixed by making this folder a standalone repo with its own `.gitignore`. The deploy bat now also has an asset guard that counts ignored files under `public/` and aborts rather than shipping a broken site.
 - **2026-08-11 - Workspace draft files are not authoritative for published metadata.** `03 EPISODE prep guests/GUEST Julian Kiverstein/julian_kiverstein_youtube_description.md` lists a video ID that was never published, and carries a description paragraph that did not make it into the live video. Always pull `youtube_id`, `description` and `timestamps` from the published video.
 - **2026-08-11 - Railway does not adopt the target port you type into the domain dialog.** Railway injects `PORT=8080` and Next binds to it. Setting the generated domain's target port to 3000 gives a 502 while Railway still reports "Deployment successful" and the service shows Online.
@@ -154,7 +164,9 @@ Edit, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the ba
 **Known cosmetic defects, not yet fixed:**
 
 - `public/episodes/full_list.json` is fabricated v0 placeholder data listing Stephen Wolfram, Karl Friston, David Chalmers and Francisco Varela as guests. Nothing references it, but it is publicly fetchable. Should be deleted.
-- `app/layout.tsx` references `/card.png` as the Open Graph image and `/favicon.ico`, neither of which exists in `public/`. This means link previews on Twitter, Slack and WhatsApp render without a card.
+- ~~`app/layout.tsx` references `/card.png` as the Open Graph image, which does not exist.~~ Fixed 2026-11-02: `public/card.png` (1200x630) now exists, and each episode page uses its YouTube thumbnail as its preview.
+- **Episode data errors, found 2026-11-02, not yet fixed** (take corrections from the published YouTube descriptions): `ep8.json` (Juensung Kim) carries Michael Strevens' description, copied from `ep10.json`; `ep5.json` (Azim Shariff) description is cut off at "cultural evolutio"; `ep6.json` spells the guest "Jonathan Pageuau" while its own description says "Pageau".
+- `public/apple-icon.png` is the old v0 logo, not Anagoge's. It is not linked anywhere; `public/apple-touch-icon.png` is the real touch icon.
 - `anagoge-podcast.zip` (1.9 MB) is the original v0 export retained locally in the folder root. It is ignored and was removed from Git tracking during the 2026-09-07 housekeeping pass.
 - `components/ui/` holds 57 shadcn components, of which the site uses a handful. Harmless, since unused ones are tree-shaken out of the bundle.
 

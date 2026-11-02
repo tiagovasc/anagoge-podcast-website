@@ -1,86 +1,73 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import Image from "next/image"
-// import ThemeToggle from "@/components/theme-toggle"
-import Blur from "@/components/blur"
+import { useCallback, useEffect, useState } from "react"
 import EpisodeCarousel from "@/components/episode-carousel"
+import type { Episode } from "@/lib/episodes"
 
-export default function Home() {
-  const [posts, setPosts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [currentIndex, setCurrentIndex] = useState(0)
+interface HomeProps {
+  episodes: Episode[] // newest first
+  initialNumber: number
+}
+
+const LATEST_TITLE = "Anagoge Podcast"
+
+function numberFromPath(path: string, fallback: number) {
+  const m = path.match(/^\/episode\/(\d+)\/?$/)
+  return m ? Number(m[1]) : fallback
+}
+
+export default function Home({ episodes, initialNumber }: HomeProps) {
+  const latest = episodes[0].number
+  const [number, setNumber] = useState(initialNumber)
+  const index = Math.max(0, episodes.findIndex((e) => e.number === number))
+  const episode = episodes[index]
+
+  // Navigate without a page load; keep the URL shareable and the tab title accurate.
+  const goTo = useCallback(
+    (next: number, opts: { replace?: boolean; scroll?: boolean } = {}) => {
+      if (!episodes.some((e) => e.number === next)) return
+      setNumber(next)
+      const url = `/episode/${next}`
+      if (window.location.pathname !== url) {
+        if (opts.replace) window.history.replaceState({ n: next }, "", url)
+        else window.history.pushState({ n: next }, "", url)
+      }
+      if (opts.scroll !== false && window.scrollY > 0) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })
+      }
+    },
+    [episodes],
+  )
+
+  // Back/forward buttons.
+  useEffect(() => {
+    const onPop = () => setNumber(numberFromPath(window.location.pathname, latest))
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [latest])
 
   useEffect(() => {
-    async function fetchEpisodes() {
-      const episodes = []
-      let episodeNumber = 1
-      let consecutiveFailures = 0
-      const maxConsecutiveFailures = 3
+    document.title = number === latest && window.location.pathname === "/" ? LATEST_TITLE : `${episode.title} with ${episode.side_title} | Anagoge Podcast`
+  }, [number, latest, episode])
 
-      while (consecutiveFailures < maxConsecutiveFailures) {
-        try {
-          const url = `/episodes/ep${episodeNumber}.json`
-          const response = await fetch(url)
-
-          if (response.ok) {
-            const data = await response.json()
-            episodes.push(data)
-            consecutiveFailures = 0
-          } else {
-            consecutiveFailures++
-          }
-        } catch (error) {
-          consecutiveFailures++
-        }
-        episodeNumber++
-      }
-
-      setPosts(episodes.reverse())
-      setCurrentIndex(0)
-      setLoading(false)
+  // Arrow keys move between episodes (left = newer, right = older), unless typing or a dialog is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      if (document.body.classList.contains("modal-open")) return
+      if (e.key === "ArrowLeft" && index > 0) goTo(episodes[index - 1].number)
+      if (e.key === "ArrowRight" && index < episodes.length - 1) goTo(episodes[index + 1].number)
     }
-
-    fetchEpisodes()
-  }, [])
-
-  if (loading) {
-    return (
-      <main className="w-screen h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
-        <Image
-          src="/images/design-mode/anagogepodcastlogo.png"
-          alt="Anagoge Logo"
-          width={240}
-          height={240}
-          className="w-40 mb-8"
-        />
-        <div className="flex items-center gap-2">
-          <span className="text-lg text-black/70 dark:text-white/70 font-light">Loading episodes</span>
-          <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-black/70 dark:bg-white/70 rounded-full animate-[pulse_1.2s_ease-in-out_0s_infinite]" />
-            <span className="w-1.5 h-1.5 bg-black/70 dark:bg-white/70 rounded-full animate-[pulse_1.2s_ease-in-out_0.2s_infinite]" />
-            <span className="w-1.5 h-1.5 bg-black/70 dark:bg-white/70 rounded-full animate-[pulse_1.2s_ease-in-out_0.4s_infinite]" />
-          </div>
-        </div>
-        <div className="absolute bottom-10 right-10">
-          {/* <ThemeToggle /> */}
-        </div>
-      </main>
-    )
-  }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [index, episodes, goTo])
 
   return (
-    <main className="w-screen min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-hidden">
-      <EpisodeCarousel
-        episodes={posts}
-        currentIndex={currentIndex}
-        setCurrentIndex={setCurrentIndex}
-      />
-      <Blur />
-      {/* <div className="absolute top-6 right-6">
-        <ThemeToggle />
-      </div> */}
+    <main className="w-full min-h-screen bg-black text-white overflow-x-hidden">
+      <EpisodeCarousel episodes={episodes} index={index} onSelect={goTo} />
     </main>
   )
 }

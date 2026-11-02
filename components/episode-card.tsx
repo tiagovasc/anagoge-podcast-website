@@ -2,228 +2,161 @@
 
 import { PiApplePodcastsLogo, PiSpotifyLogo, PiYoutubeLogo } from "react-icons/pi"
 import { MdAutoStories } from "react-icons/md"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
-import YoutubeEmbed from "@/components/youtube-embed"
-import { convertTimestampsToObjects } from "@/lib/utils"
+import { Check, ChevronLeft, ChevronRight, Link2 } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
+import YoutubeEmbed, { type PlayerHandle } from "@/components/youtube-embed"
+import { parseTimestamps } from "@/lib/timestamps"
+import type { Episode } from "@/lib/episodes"
 
-interface Timestamp {
-  time: string
-  name: string
-  seconds: number
-}
+type Tab = "description" | "timestamps"
 
 interface EpisodeCardProps {
-  episode: {
-    title: string
-    side_title: string
-    youtube_id: string
-    description: string
-    timestamps: string
-    apple_link: string
-    spotify_link: string
-    youtube_link: string
-    google_link: string
-    medium_link?: string
-  }
-  number: number
-  isPreview: boolean
-  isSelected: boolean
-  onNavigate?: { prev: () => void; next: () => void }
-  previousEpisode?: any
-  nextEpisode?: any
-  currentIndex?: number
+  episode: Episode
+  newer?: Episode
+  older?: Episode
+  onSelect: (number: number) => void
+  tab: Tab
+  onTabChange: (tab: Tab) => void
 }
 
-export default function EpisodeCard({
-  episode,
-  number,
-  isPreview,
-  isSelected,
-  onNavigate,
-  previousEpisode,
-  nextEpisode,
-  currentIndex,
-}: EpisodeCardProps) {
-  const [showDetails, setShowDetails] = useState(isSelected && !isPreview)
-  const [activeTab, setActiveTab] = useState<"description" | "timestamps">("description")
+const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b810]"
+const iconButton = `inline-flex items-center justify-center w-12 h-12 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/15 transition-colors ${focusRing}`
 
-  if (isPreview) {
-    return (
-      <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 border border-black/10 dark:border-white/10">
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs text-black/50 dark:text-white/50 uppercase tracking-wide mb-2">
-              Episode {number}
-            </p>
-            <h3 className="text-sm font-bold line-clamp-2">{episode.title}</h3>
-            <p className="text-xs text-black/60 dark:text-white/60 mt-1">{episode.side_title}</p>
-          </div>
-          <p className="text-xs text-black/40 dark:text-white/40 line-clamp-3">
-            {episode.description}
-          </p>
-        </div>
-      </div>
-    )
+function ShareButton({ episode }: { episode: Episode }) {
+  const [copied, setCopied] = useState(false)
+  async function share() {
+    const url = `${window.location.origin}/episode/${episode.number}`
+    const title = `${episode.title} with ${episode.side_title}`
+    try {
+      if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+        await navigator.share({ title, url })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* user cancelled the share sheet, or clipboard blocked: nothing to do */
+    }
   }
+  return (
+    <button onClick={share} className={iconButton} aria-label={copied ? "Link copied" : "Share episode link"} title={copied ? "Link copied" : "Share episode link"}>
+      {copied ? <Check className="w-5 h-5 text-[#f5b810]" aria-hidden /> : <Link2 className="w-5 h-5" aria-hidden />}
+      <span className="sr-only" aria-live="polite">{copied ? "Link copied" : ""}</span>
+    </button>
+  )
+}
+
+function MobileNav({ episode, direction, onClick }: { episode: Episode; direction: "newer" | "older"; onClick: () => void }) {
+  const label = direction === "newer" ? "Newer" : "Older"
+  return (
+    <button onClick={onClick} className={`w-full text-left rounded-lg ${focusRing}`}>
+      <span className="flex items-center gap-3 p-4 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/15 transition-colors">
+        {direction === "newer" && <ChevronLeft className="w-5 h-5 text-[#f5b810] flex-shrink-0" aria-hidden />}
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs text-white/50 uppercase tracking-wide">{label}</span>
+          <span className="block text-sm font-semibold leading-tight mt-0.5">{episode.title}</span>
+          <span className="block text-xs text-white/60 mt-1">{episode.side_title}</span>
+        </span>
+        {direction === "older" && <ChevronRight className="w-5 h-5 text-[#f5b810] flex-shrink-0" aria-hidden />}
+      </span>
+    </button>
+  )
+}
+
+export default function EpisodeCard({ episode, newer, older, onSelect, tab, onTabChange }: EpisodeCardProps) {
+  const player = useRef<PlayerHandle>(null)
+  const chapters = useMemo(() => parseTimestamps(episode.timestamps), [episode.timestamps])
+  const showTabs = chapters.length > 0
+  const activeTab: Tab = showTabs ? tab : "description"
+
+  const links = [
+    episode.apple_link && { href: episode.apple_link, label: "Listen on Apple Podcasts", Icon: PiApplePodcastsLogo },
+    episode.spotify_link && { href: episode.spotify_link, label: "Listen on Spotify", Icon: PiSpotifyLogo },
+    episode.youtube_link && { href: episode.youtube_link, label: "Watch on YouTube", Icon: PiYoutubeLogo },
+    episode.medium_link && { href: episode.medium_link, label: "Read the article", Icon: MdAutoStories },
+  ].filter(Boolean) as { href: string; label: string; Icon: typeof PiYoutubeLogo }[]
 
   return (
-    <div className="w-full space-y-6">
-      {/* Episode Title */}
+    <article className="w-full space-y-6" aria-labelledby={`ep-${episode.number}-title`}>
       <div className="space-y-3 text-center">
-        <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#f5b810]">Episode {episode.number}</p>
+        <h1 id={`ep-${episode.number}-title`} className="text-3xl md:text-4xl font-extrabold leading-tight text-balance">
           {episode.title}
-        </h2>
-        <p className="text-base md:text-lg text-black/70 dark:text-white/70 font-medium">
-          {episode.side_title}
-        </p>
+        </h1>
+        <p className="text-base md:text-lg text-white/70 font-medium">{episode.side_title}</p>
       </div>
 
-      {/* YouTube Embed */}
-      {showDetails && (
-        <div className="w-full flex justify-center">
-          <div className="w-full lg:w-[55%]">
-            <div className="rounded-lg overflow-hidden border border-black/10 dark:border-white/10">
-              <YoutubeEmbed videoId={episode.youtube_id} />
-            </div>
+      <div className="w-full flex justify-center">
+        <div className="w-full lg:w-[55%] rounded-lg overflow-hidden border border-white/10">
+          <YoutubeEmbed ref={player} videoId={episode.youtube_id} title={`${episode.title} with ${episode.side_title}`} />
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-3 md:gap-4">
+        {links.map(({ href, label, Icon }) => (
+          <a key={label} href={href} target="_blank" rel="noopener noreferrer" className={iconButton} aria-label={label} title={label}>
+            <Icon className="w-6 h-6" aria-hidden />
+          </a>
+        ))}
+        <ShareButton episode={episode} />
+      </div>
+
+      {(newer || older) && (
+        <nav className="lg:hidden space-y-3 py-4 border-y border-white/10" aria-label="More episodes">
+          {newer && <MobileNav episode={newer} direction="newer" onClick={() => onSelect(newer.number)} />}
+          {older && <MobileNav episode={older} direction="older" onClick={() => onSelect(older.number)} />}
+        </nav>
+      )}
+
+      <div className="space-y-4">
+        {showTabs && (
+          <div role="tablist" aria-label="Episode details" className="flex gap-2 border-b border-white/10">
+            {(["description", "timestamps"] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                id={`tab-${t}`}
+                aria-selected={activeTab === t}
+                aria-controls={`panel-${t}`}
+                onClick={() => onTabChange(t)}
+                className={`-mb-px px-4 py-2.5 font-medium text-sm transition-colors border-b-2 rounded-t ${focusRing} ${
+                  activeTab === t ? "text-white border-[#f5b810]" : "text-white/50 border-transparent hover:text-white"
+                }`}
+              >
+                {t === "description" ? "Description" : `Chapters (${chapters.length})`}
+              </button>
+            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Social Links */}
-      {showDetails && (
-        <div className="flex justify-center gap-4">
-          <a
-            href={episode.apple_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title="Apple Podcasts"
-          >
-            <PiApplePodcastsLogo className="w-6 h-6" />
-          </a>
-          <a
-            href={episode.spotify_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title="Spotify"
-          >
-            <PiSpotifyLogo className="w-6 h-6" />
-          </a>
-          <a
-            href={episode.youtube_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title="YouTube"
-          >
-            <PiYoutubeLogo className="w-6 h-6" />
-          </a>
-          {episode.medium_link && (
-            <a
-              href={episode.medium_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-              title="Read on Medium"
-            >
-              <MdAutoStories className="w-6 h-6" />
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* Mobile Navigation Section - Only visible on mobile, hide previous on latest episode */}
-      {showDetails && onNavigate && previousEpisode && nextEpisode && (
-        <div className="md:hidden space-y-3 py-4 border-t border-b border-black/10 dark:border-white/10">
-          {/* Previous Episode - hidden on latest episode (currentIndex === 0) */}
-          {currentIndex !== 0 && (
-            <button
-              onClick={onNavigate.prev}
-              className="w-full text-left"
-            >
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-                <ChevronLeft className="w-5 h-5 text-[#f5b810] flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-black/50 dark:text-white/50 uppercase tracking-wide">Previous</p>
-                  <p className="text-sm font-semibold leading-tight">{previousEpisode.title}</p>
-                  <p className="text-xs text-black/60 dark:text-white/60 mt-1">{previousEpisode.side_title}</p>
-                </div>
-              </div>
-            </button>
-          )}
-
-          {/* Next Episode */}
-          <button
-            onClick={onNavigate.next}
-            className="w-full text-left"
-          >
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-black/50 dark:text-white/50 uppercase tracking-wide">Next</p>
-                <p className="text-sm font-semibold leading-tight">{nextEpisode.title}</p>
-                <p className="text-xs text-black/60 dark:text-white/60 mt-1">{nextEpisode.side_title}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-[#f5b810] flex-shrink-0 mt-0.5" />
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* Description/Timestamps Tabs */}
-      {showDetails && (
-        <div className="space-y-4">
-          {/* Tab buttons */}
-          <div className="flex gap-2 border-b border-black/10 dark:border-white/10">
-            <button
-              onClick={() => setActiveTab("description")}
-              className={`px-4 py-2 font-medium text-sm transition-colors ${
-                activeTab === "description"
-                  ? "text-black dark:text-white border-b-2 border-[#f5b810]"
-                  : "text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white"
-              }`}
-            >
-              Description
-            </button>
-            <button
-              onClick={() => setActiveTab("timestamps")}
-              className={`px-4 py-2 font-medium text-sm transition-colors ${
-                activeTab === "timestamps"
-                  ? "text-black dark:text-white border-b-2 border-[#f5b810]"
-                  : "text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white"
-              }`}
-            >
-              Timestamps
-            </button>
+        {activeTab === "description" ? (
+          <div role={showTabs ? "tabpanel" : undefined} id="panel-description" aria-labelledby={showTabs ? "tab-description" : undefined} className="pb-12">
+            <p className="text-sm md:text-base whitespace-pre-line leading-relaxed text-white/80 break-words">{episode.description}</p>
           </div>
-
-          {/* Tab Content */}
-          {activeTab === "description" ? (
-            <div className="space-y-4 pb-12">
-              <p className="text-sm md:text-base whitespace-pre-line leading-relaxed text-black/80 dark:text-white/80">
-                {episode.description}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 pb-12">
-              {convertTimestampsToObjects(episode.timestamps).map(
-                (timestamp: Timestamp, i: number) => (
-                  <a
-                    key={i}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={`https://www.youtube.com/watch?v=${episode.youtube_id}&t=${timestamp.seconds}s`}
-                    className="block text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors py-2 border-b border-black/5 dark:border-white/5 last:border-b-0"
-                  >
-                    <span className="opacity-50 mr-2">{timestamp.time}</span> {timestamp.name}
-                  </a>
-                )
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        ) : (
+          <ol role="tabpanel" id="panel-timestamps" aria-labelledby="tab-timestamps" className="pb-12">
+            {chapters.map((c, i) => (
+              <li key={i} className="border-b border-white/5 last:border-b-0">
+                <a
+                  href={`https://www.youtube.com/watch?v=${episode.youtube_id}&t=${c.seconds}s`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+                    e.preventDefault()
+                    player.current?.playFrom(c.seconds)
+                  }}
+                  className={`group flex gap-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors rounded ${focusRing}`}
+                >
+                  <span className="w-16 flex-shrink-0 tabular-nums text-white/40 group-hover:text-[#f5b810] transition-colors">{c.time}</span>
+                  <span>{c.name}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </article>
   )
 }
