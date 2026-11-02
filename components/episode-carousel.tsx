@@ -79,7 +79,7 @@ export default function EpisodeCarousel({ episodes, index, onSelect }: EpisodeCa
               <SideNav episode={older} direction="older" onClick={() => onSelect(older.number)} />
             </div>
           )}
-          <EpisodeCard key={episode.number} episode={episode} newer={newer} older={older} onSelect={onSelect} tab={tab} onTabChange={setTab} />
+          <EpisodeCard key={episode.number} episode={episode} layoutEpisodes={episodes} newer={newer} older={older} onSelect={onSelect} tab={tab} onTabChange={setTab} />
         </div>
       </div>
 

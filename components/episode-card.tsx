@@ -12,6 +12,7 @@ type Tab = "description" | "timestamps"
 
 interface EpisodeCardProps {
   episode: Episode
+  layoutEpisodes: Episode[]
   newer?: Episode
   older?: Episode
   onSelect: (number: number) => void
@@ -64,7 +65,20 @@ function MobileNav({ episode, direction, onClick }: { episode: Episode; directio
   )
 }
 
-export default function EpisodeCard({ episode, newer, older, onSelect, tab, onTabChange }: EpisodeCardProps) {
+function EpisodeHeading({ episode, sizing = false }: { episode: Episode; sizing?: boolean }) {
+  const Title = sizing ? "p" : "h1"
+  return (
+    <div className="space-y-3 text-center">
+      <p className="text-xs font-semibold uppercase tracking-widest text-[#f5b810]">Episode {episode.number}</p>
+      <Title id={sizing ? undefined : `ep-${episode.number}-title`} className="text-3xl md:text-4xl font-extrabold leading-tight text-balance">
+        {episode.title}
+      </Title>
+      <p className="text-base md:text-lg text-white/70 font-medium">{episode.side_title}</p>
+    </div>
+  )
+}
+
+export default function EpisodeCard({ episode, layoutEpisodes, newer, older, onSelect, tab, onTabChange }: EpisodeCardProps) {
   const player = useRef<PlayerHandle>(null)
   const chapters = useMemo(() => parseTimestamps(episode.timestamps), [episode.timestamps])
   const showTabs = chapters.length > 0
@@ -79,12 +93,17 @@ export default function EpisodeCard({ episode, newer, older, onSelect, tab, onTa
 
   return (
     <article className="w-full space-y-6" aria-labelledby={`ep-${episode.number}-title`}>
-      <div className="space-y-3 text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#f5b810]">Episode {episode.number}</p>
-        <h1 id={`ep-${episode.number}-title`} className="text-3xl md:text-4xl font-extrabold leading-tight text-balance">
-          {episode.title}
-        </h1>
-        <p className="text-base md:text-lg text-white/70 font-medium">{episode.side_title}</p>
+      <div className="grid items-start">
+        {/* Overlaid sizing copies reserve the tallest heading at the current width,
+            even before hydration or after fonts/viewport sizes change. */}
+        {layoutEpisodes.map((item) => (
+          <div key={item.number} aria-hidden="true" className="invisible pointer-events-none col-start-1 row-start-1 select-none">
+            <EpisodeHeading episode={item} sizing />
+          </div>
+        ))}
+        <div className="col-start-1 row-start-1">
+          <EpisodeHeading episode={episode} />
+        </div>
       </div>
 
       <div className="w-full flex justify-center">

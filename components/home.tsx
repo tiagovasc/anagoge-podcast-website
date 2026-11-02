@@ -33,8 +33,7 @@ export default function Home({ episodes, initialNumber }: HomeProps) {
         else window.history.pushState({ n: next }, "", url)
       }
       if (opts.scroll !== false && window.scrollY > 0) {
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })
+        window.scrollTo({ top: 0, behavior: "instant" })
       }
     },
     [episodes],
@@ -66,7 +65,7 @@ export default function Home({ episodes, initialNumber }: HomeProps) {
   }, [index, episodes, goTo])
 
   return (
-    <main className="w-full min-h-screen bg-black text-white overflow-x-hidden">
+    <main className="w-full min-h-screen bg-black text-white overflow-x-hidden [overflow-anchor:none]">
       <EpisodeCarousel episodes={episodes} index={index} onSelect={goTo} />
     </main>
   )
