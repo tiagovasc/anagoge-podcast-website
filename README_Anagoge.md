@@ -85,7 +85,7 @@ Projects/Anagoge Podcast Website/   (standalone git repo, its own .git)
         |
         |  deploy-anagoge-site.bat  ->  git push
         v
-github.com/tiagovasc/anagoge-podcast-website   (private)
+github.com/tiagovasc/anagoge-podcast-website   (public)
         |
         |  Railway auto-deploys on push to main
         v
@@ -126,6 +126,8 @@ Only full interview episodes belong on the site. Clips and Tiago's own lectures 
 Edit, run `npm test`, then run `deploy-anagoge-site.bat`. Set `RUN_BUILD=1` at the top of the bat to build locally before pushing, which is worth doing for any code change as opposed to a data-only change.
 
 # Changelog
+
+- **2026-11-02, repository visibility** - At the user's request, changed this repository from private to public after reviewing tracked files and history and scanning 141 historical blobs, 148 current files and text files inside the original export ZIP for credentials; no findings. Only the standalone website repository was exposed. GitHub confirmed `visibility: public`.
 
 - **2026-11-02, production publication** - User authorized committing and deploying the staged MVP-to-production pass described below. Fresh `npm test`: 5/5 passed; fresh production build: all 34 static pages generated, including 30 episode pages. Deployment proceeds through the existing GitHub-to-Railway chain. The earlier "not yet deployed" entry records the staging state.
 
